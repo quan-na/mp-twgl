@@ -25,6 +25,7 @@
     <body>
         <canvas id="c"></canvas>
     </body>
+    <!-- TODO move shaders to their own files -->
     <script id="vs" type="notjs">
      /*
         Matrixes:
@@ -93,10 +94,19 @@
      void main()
      {
          vec4 textureColor = texture2D(u_texture, v_texcoord);
-         // TODO diffuse component
-         // TODO specular component
+         vec3 diffuseColor = u_ambient;
+         vec3 specularColor = vec3(0.0, 0.0, 0.0);
+         for (int i=0; i<MAX_POINT_LIGHTS; i++) {
+            // TODO diffuse component
+            float cosTheta = clamp( dot(v_normal, normalize(v_position.xyz - u_pointLightPosition[i])), 0.0, 1.0);
+            float distance = distance(u_pointLightPosition[i], v_position.xyz);
+            diffuseColor = diffuseColor + u_pointLightColor[i]*u_pointLightDistance[i]*cosTheta/(distance*distance);
+            //diffuseColor = diffuseColor + u_pointLightColor[i];
+            // TODO specular component
+         }
+         gl_FragColor = vec4(clamp(v_normal + vec3(0.5, 0.5, 0.5), 0.0, 1.0), 1.0);
          // TODO combine
-         gl_FragColor = vec4(textureColor.rgb + u_ambient, textureColor.a);
+         //gl_FragColor = vec4(textureColor.rgb * clamp(diffuseColor, 0.0, 1.0), textureColor.a);
      }
     </script>
     <script src="twgl-full.js"></script>
@@ -221,17 +231,17 @@
          min: gl.NEAREST,
          mag: gl.NEAREST,
          src: [
-             255, 0, 0, 255,
              0, 0, 255, 255,
-             0, 255, 0, 255,
-             255, 0, 255, 255,
+             0, 255, 127, 255,
+             255, 127, 0, 255,
+             127, 0, 255, 255,
          ],
      }); // create texture, min? mag? last param not alpha?
 
      var uniforms = {
-         u_pointLightColor: [[1.0, 0.2, 0.2], [0.2, 0.2, 1.0]],
-         u_pointLightPosition: [[-2, 0, -3], [2, 0, -3]],
-         u_pointLightDistance: [10, 9],
+         u_pointLightColor: [1.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+         u_pointLightPosition: [0.0, 6.0, 0.0, 0.0, 0.0, -6.0],
+         u_pointLightDistance: [90.0, 80.0],
          u_ambient: [0.1, 0.1, 0.1],
          u_texture: tex,
          u_specular: 0.2,
@@ -249,7 +259,7 @@
          // TODO light sources
          // TODO object in view
          // TODO draw
-         var eye = [1, 2, -8];
+         var eye = [0, 0, -8];
          var target = [0, 0, 0];
          var up = [0, 1, 0];
 
@@ -261,7 +271,7 @@
          // some uniform adjustment (camera and world)
          uniforms.u_ModelView = m4.multiply(view, model);
          uniforms.u_Proj = projection;
-         uniforms.u_MVInvTrans = m4.transpose(m4.inverse(uniforms.u_ModelView));
+         uniforms.u_MVInvTrans = m4.transpose(m4.inverse(uniforms.u_ModelView)); // something is wrong with normal z component
 
          gl.useProgram(programInfo.program);
          twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo);
