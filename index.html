@@ -96,11 +96,28 @@
          // TODO diffuse component
          // TODO specular component
          // TODO combine
-         gl_FragColor = vec4(u_ambient, 1.0);
+         gl_FragColor = vec4(textureColor.rgb + u_ambient, textureColor.a);
      }
     </script>
     <script src="twgl-full.js"></script>
     <script>
+     // TODO move this to common utilities file
+     function wrapAnimationFps(drawFunc, fps) {
+         var now;
+         var then = Date.now();
+         var interval = 1000/fps;
+         var delta;
+         function wrapDraw(time) {
+             now = Date.now();
+             delta = now - then;
+             if (delta > interval) {
+                 drawFunc(time);
+                 then = now;
+             };
+             requestAnimationFrame(wrapDraw);
+         };
+         requestAnimationFrame(wrapDraw);
+     };
      "use strict";
      twgl.setDefaults({attribPrefix: "a_"});
      var m4 = twgl.m4;
@@ -204,10 +221,10 @@
          min: gl.NEAREST,
          mag: gl.NEAREST,
          src: [
-             255, 255, 255, 255,
-             192, 192, 192, 255,
-             192, 255, 192, 255,
-             255, 192, 255, 255,
+             255, 0, 0, 255,
+             0, 0, 255, 255,
+             0, 255, 0, 255,
+             255, 0, 255, 255,
          ],
      }); // create texture, min? mag? last param not alpha?
 
@@ -215,13 +232,12 @@
          u_pointLightColor: [[1.0, 0.2, 0.2], [0.2, 0.2, 1.0]],
          u_pointLightPosition: [[-2, 0, -3], [2, 0, -3]],
          u_pointLightDistance: [10, 9],
-         u_ambient: [0.5, 0.5, 0.5],
+         u_ambient: [0.1, 0.1, 0.1],
          u_texture: tex,
          u_specular: 0.2,
      }; // uniform values for shaders, only 1 light source?
 
      function render(time) {
-         time *= 0.001;
          twgl.resizeCanvasToDisplaySize(gl.canvas);
          gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
@@ -233,15 +249,14 @@
          // TODO light sources
          // TODO object in view
          // TODO draw
-         var eye = [0, 0, -8];
+         var eye = [1, 2, -8];
          var target = [0, 0, 0];
          var up = [0, 1, 0];
 
          var projection = m4.perspective(30 * Math.PI / 180, gl.canvas.clientWidth / gl.canvas.clientHeight, 0.5, 10); // in case of screen resize
          var camera = m4.lookAt(eye, target, up);
          var view = m4.inverse(camera);
-         var model = m4.rotationY(time);
-         //var model = m4.identity();
+         var model = m4.rotationY(time *= 0.001);
 
          // some uniform adjustment (camera and world)
          uniforms.u_ModelView = m4.multiply(view, model);
@@ -252,12 +267,8 @@
          twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo);
          twgl.setUniforms(programInfo, uniforms);
          gl.drawElements(gl.TRIANGLES, bufferInfo.numElements, gl.UNSIGNED_SHORT, 0);
-
-         // Schedule the next frame.
-         requestAnimationFrame(render);
-         console.log("draw"+time);
      }
-     requestAnimationFrame(render);
+     wrapAnimationFps(render, 60);
 
     </script>
 </html>
